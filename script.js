@@ -4,119 +4,70 @@ async function loadCSV() {
     return text.split('\n').map(row => row.split(','));
 }
 
-async function createChart() {
-    const data = await loadCSV();
-    const labels = [];
-    const checkingData = [];
-    const savingsData = [];
-    const combinedData = [];
+function createChart(data) {
+    const scatterData = [];
 
-    for (let i = 1; i < data.length; i++) {
-        const row = data[i];
-        if (row.length < 4) continue;
+    for (let i = 1; i < data.length; i++) { // Start from 1 to skip the header row
+        const [date, , , combined] = data[i]; // Ignore Checking and Savings, only take Combined Amount
 
-        labels.push(row[0]);
-        checkingData.push(parseFloat(row[1]) || 0);
-        savingsData.push(parseFloat(row[2]) || 0);
-        combinedData.push(parseFloat(row[3]) || 0);
+        if (date && combined) {
+            scatterData.push({
+                x: new Date(date), // Date on the x-axis
+                y: parseFloat(combined) // Combined Amount on the y-axis
+            });
+        }
     }
 
     const ctx = document.getElementById('myChart').getContext('2d');
-    new Chart(ctx, {
-        type: 'line',
+    const myChart = new Chart(ctx, {
+        type: 'scatter',
         data: {
-            labels: labels,
-            datasets: [
-                {
-                    label: 'Checking',
-                    data: checkingData,
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                    fill: true,
-                    pointRadius: 5,
-                    pointHoverRadius: 7,
-                    tension: 0.4,
-                },
-                {
-                    label: 'Savings',
-                    data: savingsData,
-                    borderColor: 'rgba(153, 102, 255, 1)',
-                    backgroundColor: 'rgba(153, 102, 255, 0.2)',
-                    fill: true,
-                    pointRadius: 5,
-                    pointHoverRadius: 7,
-                    tension: 0.4,
-                },
-                {
-                    label: 'Combined Amount',
-                    data: combinedData,
-                    borderColor: 'rgba(255, 159, 64, 1)',
-                    backgroundColor: 'rgba(255, 159, 64, 0.2)',
-                    fill: true,
-                    pointRadius: 5,
-                    pointHoverRadius: 7,
-                    tension: 0.4,
-                }
-            ]
+            datasets: [{
+                label: 'Combined Amount',
+                data: scatterData,
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                pointRadius: 5, // Size of the points
+                pointHoverRadius: 7 // Size of the points when hovered
+            }]
         },
         options: {
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const label = context.dataset.label || '';
-                            if (label) {
-                                return `${label}: $${context.raw.toFixed(2)}`;
-                            }
-                            return '';
-                        }
-                    }
-                },
-                legend: {
-                    display: true,
-                    labels: {
-                        font: {
-                            size: 14
-                        }
-                    }
-                }
-            },
             scales: {
                 x: {
+                    type: 'time', // Use the 'time' scale for date parsing
+                    time: {
+                        unit: 'month',
+                        tooltipFormat: 'YYYY-MM-DD',
+                    },
                     title: {
                         display: true,
-                        text: 'Date',
-                        font: {
-                            size: 16
-                        }
-                    },
-                    ticks: {
-                        autoSkip: true,
-                        maxTicksLimit: 10
+                        text: 'Date'
                     }
                 },
                 y: {
                     title: {
                         display: true,
-                        text: 'Amount',
-                        font: {
-                            size: 16
-                        }
-                    },
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return `$${value}`;
+                        text: 'Combined Amount (USD)'
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(tooltipItem) {
+                            return `$${tooltipItem.raw.y.toFixed(2)}`; // Format as currency
                         }
                     }
                 }
             },
-            animation: {
-                duration: 1500,
-                easing: 'easeInOutQuad'
+            interaction: {
+                mode: 'nearest',
+                intersect: true
             }
         }
     });
 }
 
-createChart();
+loadCSV().then(data => {
+    createChart(data);
+});
